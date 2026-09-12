@@ -1,0 +1,11 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: @PACKAGE_NAME@
+Description: Generalized continued fractions with GMP rational terms
+Version: @PACKAGE_VERSION@
+Requires: gmp
+Libs: -L${libdir} -lmpgcf
+Cflags: -I${includedir}

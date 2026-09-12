@@ -1,0 +1,236 @@
+.TH MPGCF 3 "2026" "mpgcf 1.0.0" "mpgcf Manual"
+.SH NAME
+mpgcf \- generalized continued fractions with GMP rational terms
+.SH SYNOPSIS
+.nf
+.B #include <mpgcf.h>
+.PP
+.B typedef struct mpgcf_struct mpgcf_t[1];
+.PP
+.BI "void mpgcf_init(mpgcf_t " cf );
+.BI "void mpgcf_clear(mpgcf_t " cf );
+.BI "void mpgcf_set(mpgcf_t " dest ", const mpgcf_t " src );
+.BI "void mpgcf_reset(mpgcf_t " cf );
+.PP
+.BI "void mpgcf_set_b0(mpgcf_t " cf ", const mpq_t " b0 );
+.BI "void mpgcf_set_b0_si(mpgcf_t " cf ", long " num ", unsigned long " den );
+.BI "void mpgcf_append(mpgcf_t " cf ", const mpq_t " a ", const mpq_t " b );
+.BI "void mpgcf_append_si(mpgcf_t " cf ", long " a_num ", unsigned long " a_den ,
+.BI "                     long " b_num ", unsigned long " b_den );
+.BI "size_t mpgcf_length(const mpgcf_t " cf );
+.BI "int mpgcf_get_term(const mpgcf_t " cf ", size_t " i ", mpq_t " a ", mpq_t " b );
+.BI "int mpgcf_set_term(mpgcf_t " cf ", size_t " i ", const mpq_t " a ", const mpq_t " b );
+.BI "int mpgcf_set_term_si(mpgcf_t " cf ", size_t " i ", long " a_num ,
+.BI "                      unsigned long " a_den ", long " b_num ,
+.BI "                      unsigned long " b_den );
+.BI "void mpgcf_from_mpq(mpgcf_t " cf ", const mpq_t " value ", size_t " max_terms );
+.PP
+.BI "int mpgcf_eval(mpq_t " result ", const mpgcf_t " cf );
+.PP
+.BI "int mpgcf_set_str(mpgcf_t " cf ", const char *" str ", const char **" endptr );
+.BI "int mpgcf_out_str(FILE *" stream ", const mpgcf_t " cf );
+.BI "char *mpgcf_get_str(const mpgcf_t " cf );
+.fi
+.PP
+Link with
+.BR "\-lmpgcf \-lgmp" .
+.SH DESCRIPTION
+.B mpgcf
+represents a generalized continued fraction
+.PP
+.RS
+b0 + a1 / (b1 + a2 / (b2 + a3 / (b3 + ... + an / bn)))
+.RE
+.PP
+where the leading term
+.I b0
+and every numerator/denominator pair
+.RI ( ai ", " bi )
+is an arbitrary-precision rational
+.B mpq_t
+(from GNU MP).
+A classical simple continued fraction is the special case where every
+.I ai
+equals 1.
+.SS "External representation"
+The textual format accepted by
+.B mpgcf_set_str
+and produced by
+.B mpgcf_out_str
+/
+.B mpgcf_get_str
+is:
+.PP
+.RS
+[ b_0 ; (a_1, b_1), (a_2, b_2), ..., (a_n, b_n) ]
+.RE
+.PP
+Each of
+.IR b_0 ,
+.IR a_i ,
+.I b_i
+is written in ordinary GMP rational syntax: an optional leading
+.BR \- ,
+one or more digits, and an optional
+.BI / q
+denominator (e.g.\&
+.BR 3 ,
+.BR \-7/2 ).
+Whitespace around tokens, commas, semicolons, and brackets is
+insignificant.  The
+.RI "\(dq; " "term list" "\(dq"
+is optional, so
+.B "[ 3 ]"
+and
+.B "[ 3 ; ]"
+are both valid and denote the same value with zero terms.
+.SS Lifecycle
+Every
+.B mpgcf_t
+must be initialized with
+.B mpgcf_init
+before use and released with
+.B mpgcf_clear
+when no longer needed, mirroring GMP's own
+.BR mpq_init / mpq_clear
+convention.
+.B mpgcf_reset
+clears and immediately re-initializes a value in place, discarding
+all of its terms and resetting
+.I b0
+to zero.
+.B mpgcf_set
+performs a deep copy from
+.I src
+into an already-initialized
+.IR dest .
+.SS Construction
+.B mpgcf_set_b0
+and
+.B mpgcf_set_b0_si
+set the leading term.
+.B mpgcf_append
+and
+.B mpgcf_append_si
+add one more
+.RI ( a_i ", " b_i )
+pair to the end of the term list.
+.B mpgcf_length
+returns the current number of terms (not counting
+.IR b0 ),
+and
+.B mpgcf_get_term
+retrieves the
+.IR i -th
+term (0-based).
+.PP
+.B mpgcf_set_term
+and
+.B mpgcf_set_term_si
+overwrite an
+.B already existing
+term at index
+.I i
+(0-based) in place, without changing the total number of terms.
+Both return nonzero and leave
+.I cf
+unmodified if
+.I i
+is out of range (i.e.\&
+.RI "\(dq" "i >= mpgcf_length(cf)" "\(dq).
+Use
+.B mpgcf_append
+instead to add a brand new term to the end of the list.
+.PP
+.B mpgcf_from_mpq
+computes the classical simple continued fraction expansion (all
+.I ai
+= 1) of a rational number using the Euclidean algorithm, stopping
+either when the expansion terminates exactly or after
+.I max_terms
+terms have been generated.  Passing 0 for
+.I max_terms
+means "expand fully".
+.SS Evaluation
+.B mpgcf_eval
+collapses the continued fraction back into a single rational, working
+from the innermost term outward.  It returns \-1 (leaving
+.I result
+untouched) if a division by zero is encountered, and 0 on success.
+.SS "Parsing and printing"
+.B mpgcf_set_str
+parses the standard textual format described above into an
+already-initialized
+.IR cf ,
+returning 0 on success or a negative value on malformed input (in
+which case
+.I cf
+is left as the empty continued fraction "[ 0 ]").  If
+.I endptr
+is non-NULL, it is set to the position in
+.I str
+just past the closing
+.BR ] .
+.PP
+.B mpgcf_out_str
+writes the standard textual format to a
+.B FILE\ *
+stream, returning the number of characters written or a negative
+value on I/O error.
+.B mpgcf_get_str
+formats into a freshly
+.BR malloc (3)'d
+string that the caller must
+.BR free (3).
+.SH RETURN VALUE
+Functions returning
+.B int
+follow the convention that 0 indicates success and a nonzero
+(typically negative) value indicates failure; see each function's
+description above for specifics.
+.SH EXAMPLES
+.nf
+#include <mpgcf.h>
+#include <gmp.h>
+#include <stdio.h>
+
+int main(void)
+{
+	mpgcf_t cf;
+	mpq_t value, a, b;
+
+	mpgcf_init(cf);
+	mpgcf_set_str(cf, "[ 3 ; (2/3, 7), (1, 15), (1/4, 1), (1, 4/292) ]", NULL);
+
+	/* overwrite the second term (index 1) in place */
+	mpq_init(a);
+	mpq_init(b);
+	mpq_set_si(a, 1, 1);
+	mpq_set_si(b, 16, 1);
+	mpgcf_set_term(cf, 1, a, b);
+
+	mpq_init(value);
+	mpgcf_eval(value, cf);
+	gmp_printf("value = %Qd\\n", value);
+
+	mpgcf_out_str(stdout, cf);
+	putchar('\\n');
+
+	mpq_clear(a);
+	mpq_clear(b);
+	mpq_clear(value);
+	mpgcf_clear(cf);
+	return 0;
+}
+.fi
+.SH "SEE ALSO"
+.BR gmp (3),
+.BR mpq_init (3),
+.BR mpq_set_str (3)
+.SH AUTHORS
+mpgcf authors.
+.SH LICENSE
+This library is free software: GNU General Public License, version 3
+or (at your option) any later version.  See the
+.B COPYING
+file distributed with the source for the full license text.
