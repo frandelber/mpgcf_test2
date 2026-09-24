@@ -118,8 +118,10 @@ doc/    man page (mpgcf.3) and usage guide (USAGE.md)
 ```
 
 ## License
-mpgcf is free software, licensed under the GNU General Public License, version 3 or (at your option) any later version.
-It is licensed under the [GNU LGPLv3 or later](LICENSE) — see the file for full details.
+
+mpgcf is free software: you can redistribute it and/or modify it under the terms of the **GNU Lesser General Public License** as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+See the [`LICENSE`](LICENSE) file for the full text. The `COPYING` and `COPYING.LESSER` files are included as part of the standard LGPLv3 packaging convention.
 
 ## Contact
 I am Francisco Delgado Bertuzzi.
